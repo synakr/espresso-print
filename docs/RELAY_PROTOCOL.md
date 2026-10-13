@@ -1,77 +1,80 @@
-# Relay Protocol
+# Cloud Communication Protocol
 
-This is the implemented contract shared by `relay/server.cjs`, `vendor-desktop/src/lib/vendorRelay.ts`, and `guest/src/guest.tsx`.
+> [!NOTE]
+> **Status: DEPRECATED & REPLACED BY SUPABASE DIRECT FLOW**
+> 
+> The standalone WebSocket relay server (`relay/` package and `vendorRelay.ts`) was deprecated and removed from the codebase in commit `f25140d`. The project now uses Supabase Storage + Postgres RPCs + Supabase Realtime directly.
+> 
+> This document summarizes the active Supabase RPC protocol for reference, while archiving the legacy protocol contract below.
 
-## Connection
+---
 
-- Local development URL: `ws://localhost:47832/ws`
-- Production URL: `wss://<public-relay-host>/ws`
-- Vendor connects with `?role=vendor`, then sends JSON `vendor:auth` with a Supabase access token.
-- Customer connects with `?role=customer&slug=<vendor-profile-slug>`.
-- Relay resolves the slug server-side to the vendor's `auth.users.id`.
+## Active Protocol: Supabase Storage & RPCs
 
-## JSON messages
+### 1. Vendor Station Resolution
+- **Customer -> Supabase:**
+  ```sql
+  select id, shop_name, prop_name, address, offer
+  from public.vendor_profiles
+  where slug = :slug and accepting_jobs = true;
+  ```
 
-### Vendor -> relay
+### 2. Job Reservation
+- **Customer -> Supabase (RPC):**
+  ```typescript
+  supabase.rpc("reserve_guest_print_job", {
+    p_vendor_slug: slug,
+    p_original_name: file.name,
+    p_mime_type: file.type,
+    p_file_size: file.size,
+    p_print_settings: settings,
+  });
+  ```
+- **Returns:** `{ job_id: UUID, vendor_id: UUID, storage_path: string }`
+- **Initial Status:** `'uploading'`
 
-```json
-{ "type": "vendor:auth", "accessToken": "<Supabase access token>" }
-{ "type": "print:accepted", "jobId": "<id>" }
-{ "type": "print:result", "jobId": "<id>", "success": true, "message": "Print request completed" }
-```
+### 3. Encrypted File Upload
+- **Customer -> Supabase Storage:**
+  ```typescript
+  supabase.storage
+    .from("print-jobs")
+    .upload(storage_path, file, { contentType: file.type, upsert: false });
+  ```
 
-The vendor receiver maintains one local stream per `jobId` and sends terminal results correlated to that same ID.
+### 4. Job Completion
+- **Customer -> Supabase (RPC):**
+  ```typescript
+  supabase.rpc("complete_guest_print_job", {
+    p_job_id: job_id,
+  });
+  ```
+- **Updates Status:** `'pending'`
 
-### Customer -> relay
+### 5. Realtime Notification
+- **Supabase -> Vendor Desktop (Realtime):**
+  - Event: `postgres_changes` on table `public.print_jobs` where `vendor_id = :vendor_id`.
+  - Vendor downloads file from `print-jobs` bucket, verifies file integrity, updates status to `'queued'`, and prints locally.
 
-```json
-{
-  "type": "print:start",
-  "name": "document.pdf",
-  "mimeType": "application/pdf",
-  "size": 12345,
-  "options": { "copies": 1 }
-}
-{ "type": "print:end" }
-{ "type": "print:cancel" }
-```
+### 6. Storage Purge
+- **Vendor Desktop -> Supabase Storage:**
+  - On print confirmation, removes `storage_path` immediately via `supabase.storage.from("print-jobs").remove([storage_path])`.
+  - Updates job status to `'printed'`.
 
-The current relay allows `application/pdf`, `image/jpeg`, and `image/png`, with a maximum declared size of 25 MiB. These limits must be enforced again on the receiving desktop side.
+---
 
-### Relay -> customer
+## Historical Reference: Legacy WebSocket Relay Protocol (Deprecated)
 
-```json
-{ "type": "connected" }
-{ "type": "print:ready", "jobId": "<id>", "chunkSize": 262144 }
-{ "type": "print:received", "jobId": "<id>" }
-{ "type": "print:accepted", "jobId": "<id>" }
-{ "type": "print:result", "jobId": "<id>", "success": true, "message": "..." }
-{ "type": "error", "message": "..." }
-```
+*For historical reference only. The standalone relay server has been removed.*
 
-### Relay -> vendor
+### Connection
+- Vendor URL: `ws://localhost:47832/ws?role=vendor`
+- Customer URL: `ws://localhost:47832/ws?role=customer&slug=<vendor-slug>`
 
-```json
-{ "type": "vendor:ready" }
-{
-  "type": "print:start",
-  "jobId": "<id>",
-  "name": "document.pdf",
-  "mimeType": "application/pdf",
-  "size": 12345,
-  "options": { "copies": 1 }
-}
-{ "type": "print:end", "jobId": "<id>" }
-{ "type": "print:cancel", "jobId": "<id>" }
-```
-
-Binary WebSocket messages from the customer are forwarded to the vendor as binary messages. Each vendor-bound frame is `[1-byte jobId length][UTF-8 jobId][chunk bytes]`; chunks are at most 256 KiB. Multiple customer transfers may be active on one vendor socket, and the vendor routes each frame by its job ID. The relay validates declared type/size, PDF/JPEG/PNG signatures, completion state, and a five-minute transfer deadline.
-
-## Semantics and remaining deployment work
-
-- `print:received` means the relay received the declared byte count and forwarded `print:end`; it is not a print result.
-- `print:accepted` means the vendor assembled and accepted the file into its local job workflow.
-- `print:result` is emitted only after the local approval/print path reaches a terminal state.
-- The relay releases the active transfer on result, cancellation, disconnect, timeout, or forwarding failure.
-- The vendor reconnects with the session token supplied by the current Supabase session. A long-running desktop session should still be tested across token refresh/expiry.
-- Provider-level rate limiting and monitoring remain deployment responsibilities in addition to the relay connection cap and origin allowlist.
+### Messages
+- `vendor:auth`: Vendor authenticates with Supabase access token.
+- `print:start`: Customer declares filename, mimeType, and size.
+- `print:ready`: Relay acknowledges and provides chunk size (256 KB).
+- Binary chunks: Sent over WebSocket.
+- `print:end`: Customer marks completion of transmission.
+- `print:accepted`: Vendor accepts job into local queue.
+- `print:result`: Vendor reports final print success/failure.

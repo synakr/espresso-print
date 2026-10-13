@@ -1,121 +1,115 @@
-# QR Print Bridge
+# QR Print Bridge (espresso-print)
 
-QR Print Bridge is a Windows-first print station for stationery shops and cybercafés. A vendor runs a desktop app and displays a stable QR code. Customers scan it on their phones, upload a supported document, and send it to the vendor's live desktop session for local printing.
+QR Print Bridge is a Windows-first print station for stationery shops and cybercafés. A vendor runs a desktop app and displays a stable QR code on their counter. Customers scan it on their phones, upload a document (PDF, PNG, JPG), and the vendor desktop app receives and prints the file locally using Windows printers.
 
-## Product rules
+## Product Rules
 
-- Customer and vendor can be on different networks.
-- Vendor must have the desktop app open and connected. If offline, the customer submission fails; there is no offline queue.
-- Supabase handles vendor login, private temporary file storage, and the print
-  job queue.
-- Customer documents are deleted after a successful print; expired uploads are
-  cleaned up separately.
-- The WebSocket relay remains available as a temporary fallback while the
-  Supabase job flow is verified.
-- The vendor's computer prints through its locally configured Windows printer.
+- **Cross-network printing:** Customer and vendor can be on different networks (mobile data, separate Wi-Fi).
+- **Pure cloud bridge:** Supabase handles vendor authentication, Postgres metadata, private temporary file storage, and Realtime notifications. No standalone relay server is needed.
+- **Privacy & cleanup:** Customer files in Supabase Storage are deleted immediately after confirmed printing. Abandoned uploads are subject to a 24-hour expiration fallback.
+- **Physical printer:** The vendor's computer prints through its locally configured Windows printer using native Electron printing and canvas-based PDF rendering.
+- **Permanent vendor identity:** Each vendor has a permanent slug (`/v/<vendor-slug>`), enabling physical QR posters that survive restarts and re-logins.
+- **Promotional features:** Vendors can configure shop details (proprietor name, shop name, address) and active customer promotional offers that display directly on the customer's upload page.
 
-## Current implementation status
+## Current Implementation Status
 
-The Supabase upload and vendor job-consumer flow is implemented alongside the
-temporary relay fallback. A real phone-on-mobile-data to vendor-on-another-
-network print test is still required before calling the product end-to-end
-verified.
+- **Monorepo architecture:** Separate npm workspaces for `@qr-print/guest` and `@qr-print/vendor-desktop`.
+- **Supabase cloud flow:** Guest file reservation (`reserve_guest_print_job`), private Storage upload, completion RPC (`complete_guest_print_job`), and Realtime desktop notifications are implemented and active.
+- **Vendor desktop:** Electron + React application with modularized panels (Auth, Header, Welcome & Offer Banner, QR Panel with physical poster preview, Printer Settings, and Live Jobs Queue).
+- **Local printing:** High-fidelity PDF rendering via `pdfjs-dist` in an offscreen window, plus native printable QR poster generator.
+- **Storage cleanup:** Files are removed from the private Supabase Storage bucket immediately upon print completion.
 
-See:
+See also:
+- [`AGENTS.md`](AGENTS.md) — instructions and rules for coding agents
+- [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) — source of truth for product goals and architecture
+- [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md) — detailed implementation progress and checklist
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system architecture and data flows
+- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — local setup, scripts, and troubleshooting
+- [`docs/SUPABASE.md`](docs/SUPABASE.md) — database schema, RLS policies, and RPC definitions
 
-- [`AGENTS.md`](AGENTS.md) — rules for future coding agents
-- [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) — source of truth for product and current state
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — target architecture
-- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — next steps
-
-## Project structure
+## Project Structure
 
 ```text
-guest/
-  index.html
-  src/guest.tsx
-  src/lib/supabase.ts
-  src/ui/guest.css
-  vite.config.ts
-vendor-desktop/
-  index.html
-  src/main.tsx
-  src/lib/
-  src/ui/
-  electron/
-  vite.config.ts
-supabase/
-docs/
+espresso-print/
+├── guest/                     # Customer-facing web app (React + Vite + Tailwind CSS)
+│   ├── index.html
+│   ├── src/
+│   │   ├── guest.tsx          # Guest root router (/ -> landing, /v/:slug -> upload)
+│   │   ├── components/
+│   │   │   ├── landing/       # Marketing landing page (brand, benefits, download link)
+│   │   │   └── upload/        # Customer upload flow, vendor offer banner & status
+│   │   ├── lib/supabase.ts    # Supabase client
+│   │   └── ui/guest.css
+│   └── vite.config.ts
+├── vendor-desktop/            # Vendor desktop application (Electron + React + Vite)
+│   ├── electron/
+│   │   ├── main.cjs           # Electron main process & IPC handlers
+│   │   ├── preload.cjs        # Context bridge for print host API
+│   │   ├── server.cjs         # Local express bridge & print job orchestrator
+│   │   ├── pdf-print.html     # Offscreen PDF renderer (pdfjs-dist)
+│   │   ├── qr-print.html      # Printable QR poster window
+│   │   └── qr-print-preload.cjs
+│   ├── src/
+│   │   ├── main.tsx
+│   │   ├── lib/
+│   │   │   ├── supabase.ts    # Supabase client
+│   │   │   └── vendorJobs.ts  # Realtime subscription, 60s fallback polling & storage cleanup
+│   │   └── ui/                # Modular UI components (AuthScreen, QrPanel, WelcomeBanner, etc.)
+│   └── vite.config.ts
+├── supabase/
+│   └── migrations/            # Versioned SQL migrations (tables, storage policies, RPCs)
+├── docs/                      # Technical documentation
+└── package.json               # Root npm workspace manifest
 ```
 
-The root package uses npm workspaces. The customer app and desktop app have
-separate manifests, builds, and output directories. The relay fallback remains
-documented and is not part of the two application workspaces.
+## Environment Variables
 
-## Environment variables
-
-### Root `.env` (shared Vite environment)
+Copy `.env.example` to `.env` in the repository root:
 
 ```env
 VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
-VITE_RELAY_URL=ws://localhost:47832/ws
-VITE_GUEST_BASE_URL=https://printbridge.example
+VITE_GUEST_BASE_URL=https://espresso-print.akhram.dev/
 ```
 
-Use `ws://` only for local development. Production should use `wss://` with a publicly reachable TLS endpoint, and `VITE_GUEST_BASE_URL` should be the HTTPS domain hosting the guest app. Vite environment variables are exposed to the client; never put a service-role/secret key in a `VITE_*` variable.
-
-### `relay/.env` (server only)
-
-```env
-SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SECRET_SERVICE_ROLE_KEY
-PORT=47832
-ALLOWED_ORIGINS=https://printbridge.example
-MAX_CONNECTIONS=500
-```
-
-Keep `relay/.env` private and out of version control. The service-role key must never be shipped with the desktop app or customer web page.
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`: Public Supabase project credentials. Never put the `service-role` secret key in Vite environment variables.
+- `VITE_GUEST_BASE_URL`: The HTTPS domain where the guest web app is hosted (e.g. Vercel deployment). Used by the desktop app to generate permanent QR codes and shareable links.
 
 ## Development
 
 From project root:
 
 ```powershell
+# Install all dependencies across workspaces
 npm install
+
+# Start the vendor desktop app in development mode (Electron + Vite)
 npm run dev
+
+# Run the guest customer web app locally in another terminal
+npm run dev --workspace guest
 ```
 
-Build or typecheck either workspace directly:
+### Build & Typecheck
 
 ```powershell
-npm run build:guest
-npm run build:desktop
+# Typecheck both workspaces
 npm run typecheck
+
+# Build the guest web app (dist/ in guest/)
+npm run build:guest
+
+# Build the desktop renderer (dist/ in vendor-desktop/)
+npm run build:desktop
+
+# Package the Windows desktop application (.exe installer)
+npm run package
 ```
 
-The desktop package is started by `npm run dev` and uses its local
-`vendor-desktop/dist` output when packaged. The guest package builds to
-`guest/dist` and is independently deployable to Vercel.
+## Supabase Setup
 
-In another terminal, run the relay:
-
-```powershell
-cd relay
-npm install
-npm run dev
-```
-
-Check relay health locally at `http://localhost:47832/health`. `onlineVendors: 1` means one vendor WebSocket is registered with the relay; it does not prove customer upload or printing works.
-
-## Supabase
-
-Supabase Auth owns password handling and sessions. `src/lib/supabase.ts` configures persistent sessions. The `public.vendor_profiles` table links its `id` to `auth.users.id` and has a unique `slug` used for public vendor identity. The signup trigger should create a profile automatically; verify it exists in the actual Supabase project.
-
-## Existing local printing behavior
-
-The current Electron host code includes a local print server and print integration. Some of that legacy code may remain while the live relay path is built. Do not remove it until the replacement path is integrated and tested.
-
-## Before public deployment
-
-Before public deployment, confirm the hosting provider supports WebSockets and configure TLS (`wss://`). Set `ALLOWED_ORIGINS` to the customer HTTPS origin, review provider-level rate limits, and test offline, disconnect, oversized, invalid-signature, approval, and printer-failure paths.
+1. Run the migrations in `supabase/migrations/` in order via the Supabase Dashboard SQL Editor:
+   - `202610120001_storage_jobs.sql`
+   - `202610120002_vendor_profile_select_grants.sql`
+2. Verify in Supabase Storage that the `print-jobs` bucket is created, configured as **Private**, and allows `application/pdf`, `image/jpeg`, `image/png` up to 25 MB.
+3. Ensure Realtime is enabled for the `public.print_jobs` table in Database -> Publications.

@@ -1,78 +1,108 @@
 # Development Setup and Troubleshooting
 
-## Project folders
+## Project Structure
 
-- Root: npm workspaces, Supabase migrations, and documentation.
-- `vendor-desktop/src/ui/App.tsx`: vendor login/signup and dashboard.
-- `vendor-desktop/src/lib/supabase.ts`: Supabase renderer client.
-- `vendor-desktop/src/lib/vendorRelay.ts`: vendor WebSocket connection helper.
-- `guest/src/guest.tsx`: customer upload page.
-- `relay/`: Node.js WebSocket relay service.
+This repository is structured as an npm monorepo with two primary packages:
 
-## Environment files
+- **Root:** Workspace orchestration, shared devDependencies (Tailwind v4), Supabase migrations, and documentation.
+- **`guest/` (`@qr-print/guest`):**
+  - Customer web application (React 18 + Vite + Tailwind CSS).
+  - Contains the marketing landing page at `/` and the customer upload station at `/v/<slug>`.
+  - Deploys as static HTML/JS/CSS to Vercel (`vercel.json` configured).
+- **`vendor-desktop/` (`@qr-print/vendor-desktop`):**
+  - Electron 33 desktop app for Windows print shop counters.
+  - `electron/main.cjs`: Electron main process, IPC handlers, and window management.
+  - `electron/server.cjs`: Local Express bridge, print settings normalization, and Windows print orchestration.
+  - `electron/pdf-print.html`: Offscreen canvas PDF renderer powered by `pdfjs-dist`.
+  - `electron/qr-print.html`: Dedicated printable counter QR sheet generator.
+  - `src/lib/vendorJobs.ts`: Supabase Realtime consumer, download pipeline, and Storage cleanup.
+  - `src/ui/`: Modular React components (`AuthScreen`, `StationHeader`, `WelcomeBanner`, `QrPanel`, `SettingsPanel`, `JobsPanel`, `PreviewDialog`).
+- **`supabase/migrations/`:**
+  - `202610120001_storage_jobs.sql`: Tables, private bucket creation, storage policies, and RPC definitions.
+  - `202610120002_vendor_profile_select_grants.sql`: Public select grants and RPC signature refinement.
 
-Root `.env` (loaded by both Vite workspaces):
+## Environment Variables
+
+Copy `.env.example` to `.env` in the repository root:
 
 ```env
 VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
-VITE_RELAY_URL=ws://localhost:47832/ws
-VITE_GUEST_BASE_URL=https://printbridge.example
+VITE_GUEST_BASE_URL=https://espresso-print.akhram.dev/
 ```
 
-Relay `.env`:
+- Vite automatically exposes variables prefixed with `VITE_` to both workspaces.
+- `VITE_GUEST_BASE_URL`: Base URL used to construct the vendor's permanent QR code and links (e.g., `https://<domain>/v/<slug>`).
+- **Security Rule:** Never include the Supabase `service-role` key in `.env` or any client-accessible files.
 
-```env
-SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SECRET_SERVICE_ROLE_KEY
-PORT=47832
-ALLOWED_ORIGINS=https://printbridge.example
-MAX_CONNECTIONS=500
-```
+## Running Locally
 
-## Start locally
+### 1. Install Dependencies
 
-Terminal 1, project root:
+From the repository root:
 
 ```powershell
 npm install
-npm run dev
 ```
 
-The guest app can be built independently with `npm run build:guest`; the
-desktop renderer can be built and checked with `npm run build:desktop` and
-`npm run typecheck`.
-
-Terminal 2, relay:
+### 2. Run Vendor Desktop Application
 
 ```powershell
-cd relay
-npm install
 npm run dev
 ```
 
-Health check: open `http://localhost:47832/health`.
+This concurrently starts:
+1. The Vite dev server for `vendor-desktop` on `http://localhost:5173`.
+2. The Electron application once the local dev server is ready.
 
-## Interpret health output
+### 3. Run Guest Web Application (In Another Terminal)
 
-- `status: ok`: HTTP server is running.
-- `onlineVendors: 0`: no authenticated vendor connection currently registered.
-- `onlineVendors: 1`: one vendor socket is registered. This is only a connection check, not proof of transfer or printing.
+```powershell
+npm run dev --workspace guest
+```
 
-## If the vendor stays offline
+This launches the customer web application on a local port (e.g., `http://localhost:5174`). You can test the customer flow by visiting:
+- Landing page: `http://localhost:5174/`
+- Shop upload station: `http://localhost:5174/v/<vendor-slug>`
 
-1. Confirm relay is running and health endpoint loads.
-2. Confirm root `VITE_RELAY_URL` exactly matches relay URL, including `/ws`.
-3. Restart Vite/Electron after changing `.env`.
-4. Check browser/Electron dev console for WebSocket errors.
-5. Check relay terminal for Supabase token/profile errors.
-6. Confirm `SUPABASE_URL` and server-only service-role key are valid in `relay/.env`.
-7. Confirm the vendor is logged in and has a valid Supabase session.
+## Building & Typechecking
 
-## Public deployment
+```powershell
+# Typecheck both workspaces
+npm run typecheck
 
-A local `localhost` relay only works for processes on the same machine. Deploy the relay to a public WebSocket-capable host with TLS, set root `VITE_RELAY_URL` to `wss://.../ws`, set `VITE_GUEST_BASE_URL` to the HTTPS customer-page origin, and rebuild/redeploy the desktop app. Deploy `guest/` to Vercel with Root Directory `guest`, Build Command `npm run build`, and Output Directory `dist`. The QR format is `https://<guest-host>/v/<vendor-profile-slug>`.
+# Build the guest web bundle (outputs to guest/dist)
+npm run build:guest
 
-## Windows packaging note
+# Build the desktop web bundle (outputs to vendor-desktop/dist)
+npm run build:desktop
 
-A prior packaging attempt failed while electron-builder extracted `winCodeSign` because Windows symlink privileges were unavailable. If that recurs, enable Windows Developer Mode or run the packaging terminal as Administrator, then clear the electron-builder `winCodeSign` cache and retry. This is a packaging environment issue, not evidence of a relay failure.
+# Package the Windows desktop application (.exe installer in vendor-desktop/release/)
+npm run package
+```
+
+## Supabase Database Setup
+
+1. In your Supabase dashboard, open the **SQL Editor**.
+2. Run the SQL files in `supabase/migrations/` in sequence:
+   - `202610120001_storage_jobs.sql`
+   - `202610120002_vendor_profile_select_grants.sql`
+3. Verify that the `print-jobs` bucket exists under **Storage** and is marked **Private**.
+4. In **Database -> Publications**, ensure that the `print_jobs` table is included in the `supabase_realtime` publication.
+
+## Troubleshooting
+
+### "This print station is currently unavailable" on Guest Page
+1. Ensure the vendor is signed in on the desktop app.
+2. Confirm the vendor's `vendor_profiles` row exists in Postgres with `accepting_jobs = true`.
+3. Check that the URL slug matches the vendor profile's `slug` column.
+
+### Windows Packaging Error (`winCodeSign` symlink error)
+If `npm run package` fails with a symlink creation error during electron-builder cache extraction:
+1. Enable **Developer Mode** in Windows Settings (*Settings > Privacy & security > For developers > Developer Mode*), or run PowerShell as Administrator.
+2. Clear the electron-builder cache in `%LOCALAPPDATA%\electron-builder\cache`.
+3. Re-run `npm run package`.
+
+### No Default Printer Detected
+1. Open Windows **Printers & scanners** settings and configure a default printer.
+2. In the vendor desktop app under **Print Settings**, click the **Refresh** button.

@@ -1,83 +1,135 @@
-# Supabase Setup
+# Supabase Setup & Database Schema
 
-## Services Used
+## Overview
 
-- Supabase Auth for vendor accounts.
-- Postgres for vendor profiles and job metadata.
-- Private Storage bucket for temporary files.
-- Realtime for job-change notifications.
+The backend is built entirely on Supabase services:
+- **Supabase Auth:** Email/password vendor authentication and persistent session management.
+- **Postgres:** Tables `public.vendor_profiles` and `public.print_jobs`.
+- **Private Storage:** Bucket `print-jobs` for secure temporary file staging.
+- **Supabase Realtime:** Publication `supabase_realtime` broadcasting job events to desktop subscribers.
 
-## Required Data
+---
 
-### vendor_profiles
+## Migrations
 
-- `id`: vendor user ID referencing `auth.users`.
-- `slug`: unique, permanent public identifier.
-- `display_name`: vendor/shop name.
-- `created_at`: creation timestamp.
+The migrations reside in `supabase/migrations/` and should be applied in order:
 
-### jobs
+1. `202610120001_storage_jobs.sql` — Schema definition, `print-jobs` bucket, triggers, RLS policies, and RPC functions.
+2. `202610120002_vendor_profile_select_grants.sql` — Public select grants on `vendor_profiles`, table grants on `print_jobs`, and updated return signature for `reserve_guest_print_job`.
 
-The final schema must include:
+---
 
-- Unique job ID.
-- Vendor owner ID.
-- Storage object path.
-- Original filename, MIME type, and size.
-- Requested print options.
-- Job status.
-- Created, updated, and expiry timestamps.
-- Error/result information where appropriate.
+## Database Tables
 
-Finalize exact types and constraints in the migration SQL before implementation.
+### 1. `public.vendor_profiles`
 
-The initial migration is `supabase/migrations/202610120001_storage_jobs.sql`.
-It creates `print_jobs`, adds `vendor_profiles.accepting_jobs`, and enables the
-`print-jobs` private bucket. Apply it in the Supabase SQL Editor before implementing
-the guest Storage upload or vendor Realtime consumer.
+Linked 1:1 with `auth.users` on `id`.
 
-The migration uses `status = 'uploading'` while a guest upload is in progress.
-The guest client must call `reserve_guest_print_job(...)`, upload to the returned
-`storage_path`, and then call `complete_guest_print_job(...)`. The completion RPC
-only changes the job to `pending` when the object exists, which prevents an
-anonymous client from creating an arbitrary vendor job through direct table access.
+| Column | Type | Constraints / Default | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | Primary Key, `references auth.users(id) on delete cascade` | Vendor user ID |
+| `slug` | `text` | `not null unique` | Permanent unique URL slug (e.g. `vendor-4a2...`) |
+| `display_name`| `text` | `not null default 'Print Vendor'` | Fallback display name |
+| `accepting_jobs` | `boolean` | `not null default true` | Shop availability toggle |
+| `prop_name` | `text` | `null` | Proprietor name |
+| `shop_name` | `text` | `null` | Shop name |
+| `address` | `text` | `null` | Complete shop address |
+| `offer` | `text` | `null` | Active customer promotional offers (max 500 chars) |
+| `created_at` | `timestamptz`| `not null default now()` | Profile creation timestamp |
 
-## Storage
+**Triggers:**
+- `on_auth_user_created` on `auth.users`: Executes `handle_new_user()` to automatically create a profile with a deterministic slug upon vendor signup.
 
-Create a private `print-jobs` bucket for uploads. Use object paths scoped to
-`<vendor-id>/<job-id>/<filename>`; the UUID job ID makes the path non-guessable.
-Do not make uploaded files public.
+**RLS Policies:**
+- `"Public can view accepting vendor profiles"`: `for select to anon, authenticated using (accepting_jobs = true)`.
+- `"Vendors can manage their profile"`: `for update to authenticated using (id = auth.uid()) with check (id = auth.uid())`.
 
-Authorize upload, download, and deletion through appropriate RLS policies or a trusted server-side process. Never expose the service-role key in frontend code.
+---
 
-## Realtime
+### 2. `public.print_jobs`
 
-Subscribe only to the records/events needed by the signed-in vendor. Notifications should contain identifiers, not file contents or long-lived access tokens.
+Stores the lifecycle of all customer print requests.
 
-After a notification, fetch the authoritative job record. Fetch pending jobs on startup and reconnect.
+| Column | Type | Constraints / Default | Description |
+| --- | --- | --- | --- |
+| `id` | `uuid` | Primary Key, `default gen_random_uuid()` | Unique job identifier |
+| `vendor_id` | `uuid` | `not null references public.vendor_profiles(id) on delete cascade` | Assigned print shop |
+| `storage_path`| `text` | `not null unique` | Path in `print-jobs` bucket (`<vendor_id>/<job_id>/<filename>`) |
+| `original_name`| `text` | `not null` | Sanitized original filename |
+| `mime_type` | `text` | `check (mime_type in ('application/pdf', 'image/jpeg', 'image/png'))` | File type |
+| `file_size` | `bigint` | `check (file_size between 1 and 26214400)` | File byte length (max 25 MB) |
+| `print_settings`| `jsonb`| `not null default '{}'::jsonb check (jsonb_typeof(print_settings) = 'object')` | Customer print preferences |
+| `status` | `text` | `not null default 'uploading' check (status in ('uploading', 'pending', 'queued', 'printing', 'printed', 'failed', 'rejected'))` | Job status lifecycle |
+| `error_message` | `text` | `null` | Detailed error if status is `failed` |
+| `result_message`| `text` | `null` | Operational message if status is `printed` or `rejected` |
+| `created_at` | `timestamptz`| `not null default now()` | Creation timestamp |
+| `updated_at` | `timestamptz`| `not null default now()` | Last update timestamp (auto-updated by trigger) |
+| `expires_at` | `timestamptz`| `not null default (now() + interval '24 hours')` | Expiration deadline for cleanup |
 
-## Security Verification
+**Indexes:**
+- `print_jobs_vendor_status_idx`: `on public.print_jobs (vendor_id, status, created_at desc)`
+- `print_jobs_expiry_idx`: `on public.print_jobs (expires_at) where status <> 'printed'`
 
-- Vendor A cannot read or download Vendor B's files.
-- Guest uploads cannot create arbitrary jobs for another vendor.
-- File size, MIME type, and file signatures are validated.
-- Print options and job status transitions are validated.
-- Anonymous users cannot list the bucket.
-- Service-role credentials remain server-side.
+**RLS Policies:**
+- `"Vendors can view their print jobs"`: `for select to authenticated using (vendor_id = auth.uid())`
+- `"Vendors can update their print jobs"`: `for update to authenticated using (vendor_id = auth.uid())`
+- `"Vendors can delete their print jobs"`: `for delete to authenticated using (vendor_id = auth.uid())`
 
-## Dashboard and deployment setup
+---
 
-1. Open Supabase Dashboard -> SQL Editor and run the migration file once.
-2. Confirm Storage -> `print-jobs` is private and accepts only PDF, JPEG, and PNG up to 25 MiB.
-3. Enable `print_jobs` in Database -> Publications if the migration cannot update the `supabase_realtime` publication automatically.
-4. Keep `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` limited to the publishable/anon values. Do not add a service-role key to Vite, Electron, or any browser environment.
+## Security Definer RPC Functions
 
-The later cleanup workflow will require `SUPABASE_URL` and
-`SUPABASE_SERVICE_ROLE_KEY` as GitHub Actions secrets. Those secrets are not
-needed for this migration and must not be committed.
+### `reserve_guest_print_job`
+- **Arguments:**
+  - `p_vendor_slug`: text
+  - `p_original_name`: text
+  - `p_mime_type`: text
+  - `p_file_size`: bigint
+  - `p_print_settings`: jsonb (default `{}`)
+- **Returns:** `table (job_id uuid, vendor_id uuid, storage_path text)`
+- **Behavior:**
+  1. Validates slug, file size (1 B to 25 MB), sanitized name, and supported MIME type.
+  2. Confirms vendor exists and has `accepting_jobs = true`.
+  3. Inserts a new row with `status = 'uploading'`.
+  4. Returns generated `job_id`, `vendor_id`, and `storage_path`.
+- **Permissions:** `grant execute to anon, authenticated`.
 
-## Retention
+### `complete_guest_print_job`
+- **Arguments:** `p_job_id uuid`
+- **Returns:** `public.print_jobs`
+- **Behavior:**
+  1. Updates `status` from `'uploading'` to `'pending'`.
+  2. Ensures an actual corresponding file exists in `storage.objects` for bucket `'print-jobs'`.
+  3. Raises an exception if no file was uploaded.
+- **Permissions:** `grant execute to anon, authenticated`.
 
-Delete the actual Storage object after confirmed successful printing. A scheduled GitHub Actions workflow deletes objects older than 24 hours as a fallback.
+### `can_upload_guest_print_job`
+- **Arguments:** `p_storage_path text`
+- **Returns:** `boolean`
+- **Behavior:** Checks whether a print job row exists with `storage_path = p_storage_path` and `status = 'uploading'`.
+- **Usage:** Used in the `storage.objects` insertion policy to restrict anonymous uploads to pre-reserved paths.
 
-Do not assume deleting a job row deletes the corresponding Storage object.
+---
+
+## Storage Bucket Configuration
+
+- **Bucket ID:** `print-jobs`
+- **Public:** `false` (Private)
+- **File size limit:** 25 MB (`26214400 bytes`)
+- **Allowed MIME types:** `application/pdf`, `image/jpeg`, `image/png`
+
+**Storage RLS Policies:**
+- `"Guest uploads reserved print jobs"`: `for insert to anon, authenticated with check (bucket_id = 'print-jobs' and public.can_upload_guest_print_job(name))`
+- `"Vendors can read their print files"`: `for select to authenticated using (bucket_id = 'print-jobs' and (storage.foldername(name))[1] = auth.uid()::text)`
+- `"Vendors can delete their print files"`: `for delete to authenticated using (bucket_id = 'print-jobs' and (storage.foldername(name))[1] = auth.uid()::text)`
+
+---
+
+## Setup Instructions
+
+1. Open your **Supabase Project Dashboard**.
+2. Go to **SQL Editor** > **New query**.
+3. Copy and run the contents of `supabase/migrations/202610120001_storage_jobs.sql`.
+4. Copy and run the contents of `supabase/migrations/202610120002_vendor_profile_select_grants.sql`.
+5. Under **Database** > **Publications**, confirm that `print_jobs` is added to the `supabase_realtime` publication.
+6. Populate your root `.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.

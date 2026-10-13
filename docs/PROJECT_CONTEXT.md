@@ -2,40 +2,41 @@
 
 ## Product
 
-QR Print Bridge is a Windows-first application for stationery and print shops.
+QR Print Bridge (espresso-print) is a Windows-first print station application tailored for stationery shops, copy centers, and cybercafés.
 
-Customers scan a permanent vendor QR using any phone browser, upload PDF/JPG/PNG files, and choose supported print settings. The vendor desktop app receives jobs and prints them using the shop's local printer.
+Customers scan a permanent vendor QR code using any mobile browser, upload PDF/JPG/PNG documents, and submit them directly to the vendor's print station. The vendor's Windows desktop application receives jobs in real-time, displays live queue statuses, and prints locally using Windows printers.
 
 ## Product Requirements
 
-- No customer app installation.
-- Permanent QR per vendor.
-- Multiple customers can submit jobs.
-- Vendor controls approval and auto-approval.
-- Print settings are selected by the customer and validated by the vendor app.
-- Files are temporarily stored in a private Supabase Storage bucket.
-- Vendor jobs are persisted in Postgres.
-- Realtime notifications are backed by startup/reconnect recovery.
-- Fallback polling occurs only when Realtime is disconnected.
-- Files are deleted after successful printing, with a 24-hour cleanup fallback.
-- Keep costs and operational complexity low.
+- **Zero customer friction:** No mobile app installation, account creation, or messaging channels needed.
+- **Permanent QR per vendor:** Unique public slug (`/v/<vendor-slug>`) ensures physical counter posters remain valid indefinitely across restarts.
+- **Vendor personalization & offers:** Vendors configure shop name, proprietor name, address, and live customer offers/promotions directly from the desktop app.
+- **Physical QR poster generator:** Desktop app provides a built-in print preview to print counter-ready QR posters.
+- **Private storage & auto-cleanup:** Uploads are stored in a private Supabase Storage bucket and deleted immediately upon successful print completion.
+- **Postgres as source of truth:** All job statuses (`uploading`, `pending`, `queued`, `printing`, `printed`, `failed`, `rejected`) and metadata are recorded in Postgres.
+- **Realtime with recovery:** Supabase Realtime drives job alerts, backed by full recovery fetches on reconnect and 60-second fallback polling while disconnected.
+- **Multi-network capability:** Customers on mobile data can submit jobs without being connected to the shop's local Wi-Fi.
+- **Low operational cost:** Serverless architecture (Vercel guest hosting + Supabase free/low tier + local desktop printing). Standalone relay servers have been eliminated.
 
-## Abuse Prevention
+## Architecture Status
 
-A permanent QR can be photographed and shared. It does not prove physical presence.
+The project has transitioned to a monorepo containing:
+1. `guest/`: Mobile-optimized customer web application with marketing landing page (`/`) and upload station (`/v/<slug>`).
+2. `vendor-desktop/`: Electron + React application handling vendor authentication, profile & promotional offer management, printable QR sheet creation, and Windows printing.
+3. `supabase/`: Database migrations, security definer RPCs, and private storage policies.
 
-Use vendor availability/session controls, upload and print quotas, rate limits, file validation, and a vendor emergency pause. Consider rotating shop codes if stronger physical-presence checks are required.
+The standalone WebSocket relay server has been completely removed in favor of direct Supabase Storage + Realtime architecture.
+
+## Abuse Prevention & Security
+
+- Permanent QR codes do not prove physical customer presence; vendor availability controls (`accepting_jobs = true`) determine whether new jobs are permitted.
+- Security definer RPCs (`reserve_guest_print_job` and `complete_guest_print_job`) validate file types, size bounds (max 25 MB), and ensure objects exist before queuing.
+- Restrictive Row Level Security (RLS) ensures vendors can only access and delete their own files and jobs.
 
 ## Development Philosophy
 
-- Aggressive TLDR responses.
-- One implementation step at a time.
-- Minimal, targeted changes.
-- Preserve existing UI and printing behavior.
-- No unnecessary redesign or refactoring.
-- Verify each step before moving on.
-- Explicitly distinguish code changes from manual deployment steps.
-
-## Current Migration
-
-The existing project contains relay-based transfer code. The target is Supabase Storage + Postgres + Realtime + GitHub Actions cleanup. Remove old relay code only after the replacement path works and has been validated.
+- Concise, high-value explanations.
+- Small, independently verifiable steps.
+- Preserve existing working code and printing workflows.
+- Keep documentation strictly synchronized with active implementation.
+- Distinguish between implemented code, locally tested functionality, and remote deployment tasks.
