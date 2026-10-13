@@ -1,41 +1,37 @@
 import {
-  Printer,
-  LogIn,
   Download,
   MapPin,
   QrCode,
-  ArrowRight,
-  Sparkles,
-  Smartphone,
   Laptop,
+  Mail,
+  MessageCircle,
+  Printer,
+  Zap,
   CheckCircle2,
-  TrendingUp,
+  Megaphone,
+  Store,
+  ArrowUpRight,
+  Monitor,
+  FileText,
+  Clock,
 } from "lucide-react";
 
 export function LandingPage() {
   return (
     <main className="min-h-screen bg-[#f7f5ed] px-4 py-4 text-[#14232c] sm:px-8 sm:py-6">
-      <div className="mx-auto flex min-h-[96vh] max-w-[1040px] flex-col justify-between">
+      <div className="mx-auto flex min-h-[96vh] max-w-[1040px] flex-col">
 
-        {/* Navigation Bar */}
+        {/* Navigation */}
         <LandingNavigation />
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         <div className="my-auto space-y-7 py-6 sm:space-y-8">
           <HeroWithCenterActions />
           <VisualBenefitsGrid />
-          <VendorPreviewStrip />
         </div>
 
-        {/* Bottom Ad Space */}
-        <footer className="mt-4 pb-2">
-          <div
-            aria-label=""
-            className="flex h-12 w-full items-center justify-center rounded-xl border border-[#ded8c8] bg-[#ede8d8]/65 text-center text-[10.5px] font-bold tracking-widest text-[#8b8577] uppercase transition-colors"
-          >
-            ADVERTISEMENT SPACE
-          </div>
-        </footer>
+        {/* Vendor Support Footer */}
+        <VendorSupportFooter />
 
       </div>
     </main>
@@ -73,11 +69,10 @@ function HeroWithCenterActions() {
   return (
     <section className="text-center">
       <div className="inline-flex items-center gap-1.5 rounded-full bg-[#e8f6f0] px-3.5 py-1 text-[10.5px] font-bold uppercase tracking-wider text-[#07866b]">
-
-        <span>Empowering Local Print Shops & Cyber Cafés</span>
+        Empowering Local Print Shops &amp; Cyber Cafés
       </div>
 
-      <h1 className="mx-auto mt-3 max-w-[700px] text-[34px] font-black tracking-tight text-[#102434] sm:text-[46px] leading-[1.08]">
+      <h1 className="mx-auto mt-3 max-w-[700px] text-[34px] font-black leading-[1.08] tracking-tight text-[#102434] sm:text-[46px]">
         Supercharge Your Print Shop.
       </h1>
 
@@ -85,7 +80,6 @@ function HeroWithCenterActions() {
         No more taking files over WhatsApp or email. Let nearby customers send print jobs right to your counter.
       </p>
 
-      {/* HIGHLIGHTED CENTER ACTION BUTTONS */}
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <a
           href="/download"
@@ -94,14 +88,6 @@ function HeroWithCenterActions() {
           <Download size={17} />
           <span>Download App (Windows)</span>
         </a>
-        {/* 
-        <a
-          href="/login"
-          className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-[#cbd8d2] bg-white px-6 text-[13px] font-bold text-[#14232c] no-underline shadow-xs transition-colors hover:bg-[#f6faf8] active:scale-[0.98]"
-        >
-          <LogIn size={16} className="text-[#07866b]" />
-          <span>Vendor Login</span>
-        </a> */}
       </div>
     </section>
   );
@@ -109,105 +95,210 @@ function HeroWithCenterActions() {
 
 function VisualBenefitsGrid() {
   return (
-    <section className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-      {/* Visual Benefit 3: Local Marketing Badge */}
-      <div className="flex flex-col justify-between rounded-2xl border border-[#e5ebe7] bg-white p-4 shadow-2xs">
-        {/* Graphic */}
-        <div className="flex h-28 w-full items-center justify-center rounded-xl bg-[#faf5f0] border border-[#ede3d8]">
-          <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-xs border border-[#eadfd4]">
-            <MapPin size={22} className="text-[#c0392b]" />
-            <div className="text-left">
-              <span className="block text-[10px] font-bold text-[#14232c]">Store Promoted</span>
-              <span className="block text-[8.5px] text-[#c0392b] font-medium">Shown to local students</span>
+    <section className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+
+      {/* Card 1: Smart Printing */}
+      <div className="group relative overflow-hidden rounded-3xl border border-[#dcece4] bg-gradient-to-br from-[#f1fbf6] via-white to-[#e4f6ed] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#07866b]/10 sm:p-6">
+
+        <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#07866b]/[0.07] transition-transform duration-500 group-hover:scale-125" />
+
+        <div className="relative flex items-center justify-between">
+          <span className="rounded-full border border-[#cce9db] bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#07866b]">
+            Work Smarter
+          </span>
+
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#07866b] text-white shadow-lg shadow-[#07866b]/20 transition-transform duration-300 group-hover:rotate-[-6deg]">
+            <Printer size={22} strokeWidth={1.8} />
+          </div>
+        </div>
+
+        <div className="relative mt-7 flex h-[116px] items-center justify-center overflow-hidden rounded-2xl border border-white bg-white/70">
+          <div className="relative w-[78%] rounded-xl border border-[#e0eae4] bg-white p-3 shadow-sm transition-transform duration-300 group-hover:scale-[1.03]">
+            <div className="flex items-center gap-2">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#e5f7ee] text-[#07866b]">
+                <Zap size={17} />
+              </div>
+              <div className="flex-1">
+                <div className="h-2 w-20 rounded-full bg-[#233c39]/15" />
+                <div className="mt-2 h-1.5 w-14 rounded-full bg-[#233c39]/10" />
+              </div>
+              <CheckCircle2 size={19} className="text-[#07866b]" />
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e8f0eb]">
+              <div className="h-full w-full rounded-full bg-[#07866b]" />
             </div>
           </div>
         </div>
-        <div className="mt-3">
-          <h2 className="text-[13.5px] font-extrabold text-[#14232c]">
-            Free Counter Marketing
-          </h2>
-          <p className="mt-0.5 text-[11px] text-[#6b7f88]">
-            Feature your store on our local print network.
+
+        <div className="relative mt-5">
+          <h3 className="text-xl font-extrabold leading-tight tracking-tight text-[#153a30]">
+            Printing, Made Effortless.
+          </h3>
+          <p className="mt-2.5 text-[13px] leading-[1.8] text-[#59756a]">
+            Let automation handle the routine. Receive customer print jobs
+            digitally and streamline your printing workflow with fewer manual steps.
           </p>
+        </div>
+
+        <div className="relative mt-5 flex items-center gap-2 border-t border-[#dcece4] pt-4 text-[11px] font-bold text-[#07866b]">
+          <CheckCircle2 size={15} />
+          <span>A smoother printing workflow</span>
         </div>
       </div>
 
-      {/* Visual Benefit 1: Touchless Orders */}
-      <div className="flex flex-col justify-between rounded-2xl border border-[#e5ebe7] bg-white p-4 shadow-2xs">
-        {/* Graphic */}
-        <div className="flex h-28 w-full items-center justify-center rounded-xl bg-[#f0f9f5] border border-[#d8ebe2]">
-          <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-xs border border-[#e2ece7]">
-            <QrCode size={24} className="text-[#07866b]" />
-            <div className="text-left">
-              <span className="block text-[10px] font-bold text-[#14232c]">Scan &amp; Upload</span>
-              <span className="block text-[8.5px] text-[#07866b] font-medium">Instant phone transfer</span>
-            </div>
+      {/* Card 2: Free Marketing */}
+      <div className="group relative overflow-hidden rounded-3xl border border-[#e9dfd0] bg-gradient-to-br from-[#fff9ee] via-white to-[#f8edda] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#b77927]/10 sm:p-6">
+
+        <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#d69a36]/[0.10] transition-transform duration-500 group-hover:scale-125" />
+
+        <div className="relative flex items-center justify-between">
+          <span className="rounded-full border border-[#f0dfbc] bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#a36a16]">
+            At Zero Cost
+          </span>
+
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#d99a35] text-white shadow-lg shadow-[#d99a35]/25 transition-transform duration-300 group-hover:rotate-[6deg]">
+            <Megaphone size={22} strokeWidth={1.8} />
           </div>
         </div>
-        <div className="mt-3">
-          <h2 className="text-[13.5px] font-extrabold text-[#14232c]">
-            Zero-Contact Transfers
-          </h2>
-          <p className="mt-0.5 text-[11px] text-[#6b7f88]">
-            No mobile numbers or emails exchanged.
-          </p>
-        </div>
-      </div>
 
-      {/* Visual Benefit 2: Live Desktop Queue */}
-      <div className="flex flex-col justify-between rounded-2xl border border-[#e5ebe7] bg-white p-4 shadow-2xs">
-        {/* Graphic */}
-        <div className="flex h-28 w-full items-center justify-center rounded-xl bg-[#f0f6fa] border border-[#dbe6ee]">
-          <div className="w-[82%] space-y-1.5 rounded-xl bg-white p-2.5 shadow-xs border border-[#e0e8ed]">
-            <div className="flex items-center justify-between text-[9px] font-bold text-[#1e6ca8]">
-              <span className="flex items-center gap-1">
-                <Laptop size={11} /> Ready to Print
+        <div className="relative mt-7 flex h-[116px] items-center justify-center overflow-hidden rounded-2xl border border-white bg-white/70">
+          <div className="w-[84%] rounded-xl border border-[#efe6d7] bg-white p-3 shadow-sm transition-transform duration-300 group-hover:scale-[1.03]">
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#fff0d4] text-[#b77927]">
+                <Store size={21} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-extrabold text-[#4a3821]">
+                  Your Print Shop
+                </div>
+                <div className="mt-1 text-[9px] text-[#9a7b52]">
+                  Discover local services
+                </div>
+              </div>
+              <ArrowUpRight size={17} className="text-[#b77927]" />
+            </div>
+            <div className="mt-3 flex items-center gap-1.5">
+              <span className="rounded-md bg-[#fff4df] px-2 py-1 text-[9px] font-bold text-[#a36a16]">
+                Local visibility
               </span>
-              <span className="text-[#07866b]">Auto</span>
+              <span className="rounded-md bg-[#f6f2e9] px-2 py-1 text-[9px] text-[#88765d]">
+                Online presence
+              </span>
             </div>
-            <div className="h-1.5 w-full rounded bg-[#e8eef2]" />
-            <div className="h-1.5 w-2/3 rounded bg-[#07866b]" />
           </div>
         </div>
-        <div className="mt-3">
-          <h2 className="text-[13.5px] font-extrabold text-[#14232c]">
-            Automated Desktop Queue
-          </h2>
-          <p className="mt-0.5 text-[11px] text-[#6b7f88]">
-            One click to print right from your PC.
+
+        <div className="relative mt-5">
+          <h3 className="text-xl font-extrabold leading-tight tracking-tight text-[#49351c]">
+            Get Discovered. Pay Nothing.
+          </h3>
+          <p className="mt-2.5 text-[13px] leading-[1.8] text-[#857052]">
+            We help promote your print shop on our website at no marketing
+            cost to you, helping more nearby customers discover your services.
           </p>
+        </div>
+
+        <div className="relative mt-5 flex items-center gap-2 border-t border-[#eee2cd] pt-4 text-[11px] font-bold text-[#a36a16]">
+          <CheckCircle2 size={15} />
+          <span>Website promotion at no cost</span>
         </div>
       </div>
 
+      {/* Card 3: Connected Workflow */}
+      <div className="group relative overflow-hidden rounded-3xl border border-[#dce4f4] bg-gradient-to-br from-[#f0f5ff] via-white to-[#e9efff] p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#5578cb]/10 sm:p-6">
+
+        <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#5578cb]/[0.08] transition-transform duration-500 group-hover:scale-125" />
+
+        <div className="relative flex items-center justify-between">
+          <span className="rounded-full border border-[#d8e2f8] bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#4867ad]">
+            Stay Organized
+          </span>
+
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#4867ad] text-white shadow-lg shadow-[#4867ad]/20 transition-transform duration-300 group-hover:rotate-[6deg]">
+            <Monitor size={22} strokeWidth={1.8} />
+          </div>
+        </div>
+
+        <div className="relative mt-7 flex h-[116px] items-center justify-center overflow-hidden rounded-2xl border border-white bg-white/70">
+          <div className="w-[84%] rounded-xl border border-[#e1e7f4] bg-white p-3 shadow-sm transition-transform duration-300 group-hover:scale-[1.03]">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] font-extrabold text-[#2a3e70]">
+                Print Queue
+              </div>
+              <span className="rounded-md bg-[#e9f8ef] px-2 py-1 text-[9px] font-bold text-[#07866b]">
+                Ready
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <FileText size={15} className="text-[#5578cb]" />
+                <div className="h-1.5 flex-1 rounded-full bg-[#e6eaf3]" />
+                <CheckCircle2 size={13} className="text-[#07866b]" />
+              </div>
+              <div className="flex items-center gap-2">
+                <FileText size={15} className="text-[#5578cb]" />
+                <div className="h-1.5 w-1/2 rounded-full bg-[#e6eaf3]" />
+                <Clock size={13} className="text-[#a0aac0]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative mt-5">
+          <h3 className="text-xl font-extrabold leading-tight tracking-tight text-[#23365f]">
+            Every Job, In Sync.
+          </h3>
+          <p className="mt-2.5 text-[13px] leading-[1.8] text-[#647493]">
+            Keep customer submissions and printing tasks organized from your
+            desktop, making it easier to manage incoming work at your counter.
+          </p>
+        </div>
+
+        <div className="relative mt-5 flex items-center gap-2 border-t border-[#dce4f4] pt-4 text-[11px] font-bold text-[#4867ad]">
+          <CheckCircle2 size={15} />
+          <span>Organized jobs, less hassle</span>
+        </div>
+      </div>
 
     </section>
   );
 }
-
-function VendorPreviewStrip() {
+function VendorSupportFooter() {
   return (
-    <section className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-[#e0e7e3] bg-white p-4 shadow-2xs sm:flex-row sm:p-5">
-      <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#dcf5ec] text-[#07866b]">
-          <TrendingUp size={20} />
-        </div>
-        <div className="text-left">
-          <h3 className="text-xs font-extrabold text-[#14232c] sm:text-[13px]">
-            Ready to speed up your counter line?
-          </h3>
-          <p className="text-[11px] text-[#6c7f8d]">
-            Free setup. Works alongside your existing Windows printer.
+    <footer className="mt-6 border-t border-[#e2ded2] pt-5 pb-3">
+      <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+        <div className="text-center sm:text-left">
+          <p className="text-sm font-extrabold text-[#14232c]">
+            Need help with EspressoPrint?
           </p>
+          <p className="mt-1 max-w-md text-xs leading-relaxed text-[#6b7f88]">
+            Vendors can contact our developer team for website issues,
+            technical difficulties, or assistance using the platform.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <a
+            href="mailto:YOUR_DEVELOPER_EMAIL@example.com?subject=EspressoPrint%20Vendor%20Support"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#07866b] px-4 text-xs font-bold text-white no-underline transition-colors hover:bg-[#06725b]"
+          >
+            <Mail size={15} />
+            Contact Developer Team
+          </a>
+
+          <a
+            href="mailto:YOUR_DEVELOPER_EMAIL@example.com?subject=EspressoPrint%20Technical%20Issue"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d8e2dc] bg-white px-4 text-xs font-bold text-[#14232c] no-underline transition-colors hover:bg-[#f0f9f5]"
+          >
+            <MessageCircle size={15} />
+            Report an Issue
+          </a>
         </div>
       </div>
 
-      <a
-        href="/vendor-signup"
-        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#14232c] px-4 text-xs font-bold text-white no-underline shadow-xs transition-colors hover:bg-[#20333f]"
-      >
-        <span>Partner with Us</span>
-        <ArrowRight size={13} />
-      </a>
-    </section>
+      <p className="mt-5 text-center text-[10px] text-[#8b958f]">
+        © {new Date().getFullYear()} EspressoPrint. All rights reserved.
+      </p>
+    </footer>
   );
 }
