@@ -22,10 +22,10 @@ contextBridge.exposeInMainWorld("printHost", {
 
   onRelayResult: (callback) => {
     const listener = (_event, result) => callback(result);
-    ipcRenderer.on("host:relay-result", listener);
+    ipcRenderer.on("relay:result", listener);
 
     return () => {
-      ipcRenderer.removeListener("host:relay-result", listener);
+      ipcRenderer.removeListener("relay:result", listener);
     };
   },
 
@@ -37,10 +37,10 @@ contextBridge.exposeInMainWorld("printHost", {
   // Subscribe to host state changes.
   onChange: (callback) => {
     const listener = (_event, state) => callback(state);
-    ipcRenderer.on("host:change", listener);
+    ipcRenderer.on("host:changed", listener);
 
     return () => {
-      ipcRenderer.removeListener("host:change", listener);
+      ipcRenderer.removeListener("host:changed", listener);
     };
   },
 });

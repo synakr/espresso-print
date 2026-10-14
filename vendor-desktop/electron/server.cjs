@@ -228,8 +228,12 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
   const sessionToken = randomBytes(18).toString("hex");
   const jobs = [];
 
-  let selectedPrinter = await getDefaultPrinter();
-  let printers = await getPrinters();
+  const [defaultPrinter, availablePrinters] = await Promise.all([
+    getDefaultPrinter(),
+    getPrinters(),
+  ]);
+  let selectedPrinter = defaultPrinter;
+  let printers = availablePrinters;
 
   const lanUrl = () => `http://${getLanIPv4()}:47831/guest/${sessionToken}`;
 

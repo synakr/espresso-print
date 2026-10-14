@@ -406,10 +406,7 @@ export default function App() {
 
     const unsubscribe = window.printHost.onChange(() => void refresh());
 
-    const timer = setInterval(() => void refresh(), 2500);
-
     return () => {
-      clearInterval(timer);
       unsubscribe?.();
     };
   }, [session?.user.id]);

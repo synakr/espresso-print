@@ -11,17 +11,12 @@
     "package": "npm run build && electron-builder --win nsis"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.0",
     "express": "^4.21.2",
-    "lucide-react": "^0.468.0",
     "multer": "^2.4.0",
-    "pdfjs-dist": "^6.4.299",
-    "qrcode": "^1.5.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "uuid": "^11.0.5"
+    "pdfjs-dist": "^6.4.299"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.57.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -29,7 +24,11 @@
     "concurrently": "^9.1.2",
     "electron": "33.4.11",
     "electron-builder": "^25.1.8",
+    "lucide-react": "^0.468.0",
     "prettier": "^3.9.10",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
@@ -43,8 +42,17 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*",
-      "package.json"
+      "electron/**/*.cjs",
+      "electron/*.html",
+      "package.json",
+      "!**/*.map",
+      "!**/{test,tests,__tests__,coverage,.cache,.vite}/**",
+      "!**/*.{md,markdown,ts,tsx}"
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US"
     ],
     "win": {
       "target": [
