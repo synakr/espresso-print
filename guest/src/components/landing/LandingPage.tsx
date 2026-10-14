@@ -16,7 +16,6 @@ export function LandingPage() {
   return (
     <main className="min-h-screen bg-[#f7f5ed] px-4 py-4 text-[#14232c] sm:px-8 sm:py-6">
       <div className="mx-auto flex min-h-[96vh] max-w-[1040px] flex-col justify-between">
-
         {/* Navigation Bar */}
         <LandingNavigation />
 
@@ -31,12 +30,10 @@ export function LandingPage() {
         <footer className="mt-4 pb-2">
           <div
             aria-label=""
-            className="flex h-12 w-full items-center justify-center rounded-xl border border-[#ded8c8] bg-[#ede8d8]/65 text-center text-[10.5px] font-bold tracking-widest text-[#8b8577] uppercase transition-colors"
-          >
+            className="flex h-12 w-full items-center justify-center rounded-xl border border-[#ded8c8] bg-[#ede8d8]/65 text-center text-[10.5px] font-bold tracking-widest text-[#8b8577] uppercase transition-colors">
             ADVERTISEMENT SPACE
           </div>
         </footer>
-
       </div>
     </main>
   );
@@ -46,12 +43,10 @@ function LandingNavigation() {
   return (
     <nav
       className="flex w-full items-center justify-between border-b border-[#e2ded2] pb-3"
-      aria-label="Main navigation"
-    >
+      aria-label="Main navigation">
       <a
         href="/"
-        className="inline-flex items-center gap-2 font-display text-[17px] font-extrabold tracking-tight text-[#14232c] no-underline"
-      >
+        className="inline-flex items-center gap-2 font-display text-[17px] font-extrabold tracking-tight text-[#14232c] no-underline">
         <span>
           espresso<strong className="text-[#07866b]">print</strong>
         </span>
@@ -60,8 +55,7 @@ function LandingNavigation() {
       <div className="flex items-center gap-2">
         <a
           href="/v/demo"
-          className="text-xs font-semibold text-[#5b6e76] transition-colors hover:text-[#07866b]"
-        >
+          className="text-xs font-semibold text-[#5b6e76] transition-colors hover:text-[#07866b]">
           Customer Demo
         </a>
       </div>
@@ -73,7 +67,6 @@ function HeroWithCenterActions() {
   return (
     <section className="text-center">
       <div className="inline-flex items-center gap-1.5 rounded-full bg-[#e8f6f0] px-3.5 py-1 text-[10.5px] font-bold uppercase tracking-wider text-[#07866b]">
-
         <span>Empowering Local Print Shops & Cyber Cafés</span>
       </div>
 
@@ -82,15 +75,15 @@ function HeroWithCenterActions() {
       </h1>
 
       <p className="mx-auto mt-2.5 max-w-[560px] text-xs leading-relaxed text-[#5b6e76] sm:text-[14px]">
-        No more taking files over WhatsApp or email. Let nearby customers send print jobs right to your counter.
+        No more taking files over WhatsApp or email. Let nearby customers send
+        print jobs right to your counter.
       </p>
 
       {/* HIGHLIGHTED CENTER ACTION BUTTONS */}
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <a
-          href="/download"
-          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#07866b] px-6 text-[13px] font-bold text-white no-underline shadow-sm transition-all hover:bg-[#06725b] hover:shadow-md active:scale-[0.98]"
-        >
+          href="https://github.com/synakr/espresso-print/releases/download/pre-release/QR.Print.Bridge.Setup.1.0.0.exe"
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#07866b] px-6 text-[13px] font-bold text-white no-underline shadow-sm transition-all hover:bg-[#06725b] hover:shadow-md active:scale-[0.98]">
           <Download size={17} />
           <span>Download App (Windows)</span>
         </a>
@@ -117,8 +110,12 @@ function VisualBenefitsGrid() {
           <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-xs border border-[#eadfd4]">
             <MapPin size={22} className="text-[#c0392b]" />
             <div className="text-left">
-              <span className="block text-[10px] font-bold text-[#14232c]">Store Promoted</span>
-              <span className="block text-[8.5px] text-[#c0392b] font-medium">Shown to local students</span>
+              <span className="block text-[10px] font-bold text-[#14232c]">
+                Store Promoted
+              </span>
+              <span className="block text-[8.5px] text-[#c0392b] font-medium">
+                Shown to local students
+              </span>
             </div>
           </div>
         </div>
@@ -139,8 +136,12 @@ function VisualBenefitsGrid() {
           <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-xs border border-[#e2ece7]">
             <QrCode size={24} className="text-[#07866b]" />
             <div className="text-left">
-              <span className="block text-[10px] font-bold text-[#14232c]">Scan &amp; Upload</span>
-              <span className="block text-[8.5px] text-[#07866b] font-medium">Instant phone transfer</span>
+              <span className="block text-[10px] font-bold text-[#14232c]">
+                Scan &amp; Upload
+              </span>
+              <span className="block text-[8.5px] text-[#07866b] font-medium">
+                Instant phone transfer
+              </span>
             </div>
           </div>
         </div>
@@ -178,8 +179,6 @@ function VisualBenefitsGrid() {
           </p>
         </div>
       </div>
-
-
     </section>
   );
 }
@@ -203,8 +202,7 @@ function VendorPreviewStrip() {
 
       <a
         href="/vendor-signup"
-        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#14232c] px-4 text-xs font-bold text-white no-underline shadow-xs transition-colors hover:bg-[#20333f]"
-      >
+        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#14232c] px-4 text-xs font-bold text-white no-underline shadow-xs transition-colors hover:bg-[#20333f]">
         <span>Partner with Us</span>
         <ArrowRight size={13} />
       </a>

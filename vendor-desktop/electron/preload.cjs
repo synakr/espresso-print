@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("printHost", {
   // State and job management
   getState: () => ipcRenderer.invoke("host:get-state"),
+  hasCloudJob: (id) => ipcRenderer.invoke("host:has-cloud-job", id),
   clearCompleted: () => ipcRenderer.invoke("host:clear-completed"),
   refreshPrinters: () => ipcRenderer.invoke("host:refresh-printers"),
 

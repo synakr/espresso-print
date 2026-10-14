@@ -12,6 +12,8 @@ const execFileAsync = promisify(execFile);
 
 const DATA_DIR = path.join(os.homedir(), "QRPrintBridge");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
+const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
+const RETENTION_MS = 24 * 60 * 60 * 1000;
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -21,6 +23,76 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+function isWithinRetention(dateValue, now = Date.now()) {
+  const timestamp = new Date(dateValue).getTime();
+  return (
+    Number.isFinite(timestamp) &&
+    now - timestamp < RETENTION_MS &&
+    timestamp <= now + 5 * 60 * 1000
+  );
+}
+
+function removeExpiredFiles(now = Date.now()) {
+  for (const entry of fs.readdirSync(UPLOAD_DIR, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const filePath = path.join(UPLOAD_DIR, entry.name);
+    try {
+      if (now - fs.statSync(filePath).mtimeMs >= RETENTION_MS) {
+        fs.unlinkSync(filePath);
+      }
+    } catch {}
+  }
+}
+
+function readPersistedJobs() {
+  removeExpiredFiles();
+  try {
+    const records = JSON.parse(fs.readFileSync(JOBS_FILE, "utf8"));
+    if (!Array.isArray(records)) return [];
+    return records.filter((job) => {
+      if (
+        !job ||
+        typeof job.id !== "string" ||
+        !isWithinRetention(job.createdAt)
+      ) {
+        return false;
+      }
+      if (
+        typeof job.path !== "string" ||
+        path.dirname(path.resolve(job.path)) !== path.resolve(UPLOAD_DIR)
+      ) {
+        return false;
+      }
+      try {
+        return fs.statSync(job.path).isFile();
+      } catch {
+        return false;
+      }
+    }).map((job) => ({
+      ...job,
+      status: job.status === "printing" ? "queued" : job.status,
+      relayStream: null,
+      relayDone: true,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function persistJobs(jobs) {
+  const serializable = jobs.map(({ relayStream, ...job }) => job);
+  const temporaryPath = `${JOBS_FILE}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, JSON.stringify(serializable), { mode: 0o600 });
+    fs.renameSync(temporaryPath, JOBS_FILE);
+  } catch (error) {
+    try {
+      fs.unlinkSync(temporaryPath);
+    } catch {}
+    console.error("Could not persist local print jobs:", error);
+  }
+}
 
 function runPowerShell(script, args = []) {
   return execFileAsync(
@@ -226,7 +298,26 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
   });
 
   const sessionToken = randomBytes(18).toString("hex");
-  const jobs = [];
+  const jobs = readPersistedJobs();
+  persistJobs(jobs);
+
+  function pruneExpiredJobs() {
+    const now = Date.now();
+    for (let i = jobs.length - 1; i >= 0; i--) {
+      if (!isWithinRetention(jobs[i].createdAt, now)) {
+        try {
+          fs.unlinkSync(jobs[i].path);
+        } catch {}
+        jobs.splice(i, 1);
+      }
+    }
+    removeExpiredFiles(now);
+    persistJobs(jobs);
+    notify();
+  }
+
+  const cleanupTimer = setInterval(pruneExpiredJobs, RETENTION_MS);
+  cleanupTimer.unref?.();
 
   const [defaultPrinter, availablePrinters] = await Promise.all([
     getDefaultPrinter(),
@@ -472,7 +563,9 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
       printOptions: metadata.options || {},
     };
 
+    job.cloudJob = true;
     jobs.unshift(job);
+    persistJobs(jobs);
     notify();
 
     // Keep cloud jobs queued. Do not call processJob here.
@@ -497,6 +590,7 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
     const index = jobs.indexOf(job);
     if (index >= 0) jobs.splice(index, 1);
 
+    persistJobs(jobs);
     notify();
   }
 
@@ -554,6 +648,7 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
         } catch {}
       }
 
+      persistJobs(jobs);
       onRelayResult?.(job);
       notify();
     }
@@ -616,6 +711,7 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
       };
 
       jobs.unshift(job);
+      persistJobs(jobs);
       notify();
 
       // Upload is accepted and queued; no automatic printing.
@@ -674,6 +770,9 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
   return {
     getState: () => publicState(),
 
+    hasCloudJob: (id) =>
+      jobs.some((job) => job.id === id && job.cloudJob === true),
+
     clearCompleted: () => {
       for (let i = jobs.length - 1; i >= 0; i--) {
         if (jobs[i].status === "printed") {
@@ -685,6 +784,7 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
         }
       }
 
+      persistJobs(jobs);
       notify();
       return publicState();
     },
@@ -702,7 +802,11 @@ async function startHost({ getLanIPv4, onChange, onRelayResult, printPdf }) {
       return publicState();
     },
 
-    close: () => new Promise((resolve) => server.close(resolve)),
+    close: () => {
+      clearInterval(cleanupTimer);
+      persistJobs(jobs);
+      return new Promise((resolve) => server.close(resolve));
+    },
   };
 }
 

@@ -2,6 +2,7 @@
 interface Window {
   printHost: {
     getState: () => Promise<any>;
+    hasCloudJob: (id: string) => Promise<boolean>;
     setAutoApprove: (value: boolean) => Promise<any>;
     approve: (id: string) => Promise<any>;
     reject: (id: string) => Promise<any>;

@@ -199,6 +199,7 @@ app.on("before-quit", async () => {
 
 // Host and job IPC handlers
 ipcMain.handle("host:get-state", () => host.getState());
+ipcMain.handle("host:has-cloud-job", (_, id) => host.hasCloudJob(id));
 
 ipcMain.handle("host:clear-completed", () => host.clearCompleted());
 

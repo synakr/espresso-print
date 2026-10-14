@@ -168,6 +168,16 @@ export function connectVendorJobs(
     processing.add(job.id);
 
     try {
+      // A cloud job already cached on disk survives app restarts. Reuse it instead
+      // of downloading the same file from Supabase again.
+      if (await window.printHost.hasCloudJob(job.id)) {
+        if (job.status === "pending") {
+          await updateJob(job.id, { status: "queued", error_message: null });
+        }
+        processing.delete(job.id);
+        return;
+      }
+
       // Download and validate the file before changing its status to queued.
       const { data: file, error: downloadError } = await supabase!.storage
         .from("print-jobs")
@@ -249,6 +259,7 @@ export function connectVendorJobs(
         "id,vendor_id,storage_path,original_name,mime_type,file_size,print_settings,status,created_at,result_message,error_message",
       )
       .eq("vendor_id", vendorId)
+      .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .order("created_at", { ascending: true });
 
     if (error || stopped) return;

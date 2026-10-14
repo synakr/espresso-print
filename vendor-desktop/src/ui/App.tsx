@@ -457,19 +457,8 @@ export default function App() {
   }
 
   async function clearCompleted() {
-    if (session && supabase) {
-      const { error } = await supabase
-        .from("print_jobs")
-        .delete()
-        .eq("vendor_id", session.user.id)
-        .in("status", ["printed", "rejected"]);
-
-      if (error) {
-        setNotice(`Could not clear completed jobs: ${error.message}`);
-        return;
-      }
-    }
-
+    // Clear only local completed-job files/cache. Keep the cloud database rows
+    // as history; automatic and manual local cleanup must never delete them.
     await window.printHost.clearCompleted();
     await refresh();
   }
